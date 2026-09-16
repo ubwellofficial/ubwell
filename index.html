@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Günlük — Kalori Takibi</title>
+<meta name="theme-color" content="#2F6B4F">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF8F2;
+    --surface:#FFFFFF;
+    --ink:#1C2A22;
+    --ink-muted:#6B675C;
+    --green:#2F6B4F;
+    --green-dark:#21503A;
+    --green-tint:#E6EEE8;
+    --squash:#C97A3D;
+    --squash-tint:#F5E6D8;
+    --tomato:#B0433A;
+    --tomato-tint:#F5E1DE;
+    --line:#E5E1D3;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  .num{font-variant-numeric:tabular-nums;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;}
+
+  /* ---- App shell ---- */
+  .app{display:flex; min-height:100vh;}
+  .sidebar{
+    width:220px; flex-shrink:0;
+    border-right:1px solid var(--line);
+    padding:28px 16px;
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .brand{
+    font-family:'Fraunces',serif; font-size:22px; font-weight:600;
+    color:var(--green-dark); margin-bottom:28px; padding:0 10px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .leaf{font-size:20px;}
+  .navitem{
+    display:flex; align-items:center; gap:10px;
+    padding:11px 12px; border-radius:10px;
+    color:var(--ink-muted); text-decoration:none;
+    font-size:14.5px; font-weight:500;
+    border:none; background:transparent; width:100%; text-align:left;
+  }
+  .navitem svg{width:18px; height:18px; flex-shrink:0;}
+  .navitem.active{ background:var(--green-tint); color:var(--green-dark); }
+  .navitem:hover:not(.active){ background:#F1EEE3; }
+
+  .content{flex:1; min-width:0; padding:36px 40px 100px; max-width:720px; margin:0 auto; width:100%;}
+  .view{display:none;}
+  .view.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  .tabbar{
+    display:none;
+    position:fixed; bottom:0; left:0; right:0;
+    background:var(--surface); border-top:1px solid var(--line);
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+    justify-content:space-around; z-index:20;
+  }
+  .tabitem{
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:none; color:var(--ink-muted);
+    font-size:11px; font-weight:500; padding:6px 10px; border-radius:10px;
+  }
+  .tabitem svg{width:20px; height:20px;}
+  .tabitem.active{color:var(--green-dark);}
+
+  /* ---- Today view ---- */
+  .page-head{margin-bottom:22px;}
+  .page-head .eyebrow{color:var(--ink-muted); font-size:13.5px;}
+  .page-head h1{font-size:26px; margin-top:2px;}
+
+  .hero{
+    background:var(--surface); border:1px solid var(--line); border-radius:20px;
+    padding:26px; display:flex; align-items:center; gap:22px; margin-bottom:24px;
+  }
+  .ring{
+    width:112px; height:112px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; position:relative;
+  }
+  .ring::before{
+    content:''; position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(var(--green) var(--pct,0%), var(--line) 0);
+  }
+  .ring::after{
+    content:''; position:absolute; inset:9px; border-radius:50%; background:var(--surface);
+  }
+  .ring .ring-num{position:relative; z-index:1; text-align:center;}
+  .ring .ring-num .n{font-size:22px; font-weight:600; display:block; line-height:1.1;}
+  .ring .ring-num .l{font-size:10px; color:var(--ink-muted);}
+  .hero-info{flex:1; min-width:0;}
+  .hero-info .big{font-size:15px; color:var(--ink-muted); margin-bottom:6px;}
+  .hero-info .breakdown{display:flex; gap:18px; margin-top:12px; flex-wrap:wrap;}
+  .hero-info .stat .n{display:block; font-size:19px; font-weight:600;}
+  .hero-info .stat .l{font-size:12px; color:var(--ink-muted);}
+  .over{color:var(--tomato);}
+
+  .quickchips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+  .chip{
+    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:999px; padding:7px 13px; font-size:13px; font-weight:500;
+  }
+  .chip:hover{border-color:var(--green);}
+
+  .addform{
+    display:flex; gap:8px; margin-bottom:22px; background:var(--surface);
+    border:1px solid var(--line); border-radius:14px; padding:8px;
+  }
+  .addform input{
+    border:none; background:transparent; padding:9px 10px; font-size:14.5px; outline:none;
+  }
+  .addform input[name=name]{flex:1; min-width:0;}
+  .addform input[name=cal]{width:88px; text-align:right;}
+  .addform button{
+    background:var(--green); color:#fff; border:none; border-radius:10px;
+    padding:0 18px; font-weight:600; font-size:14px;
+  }
+  .addform button:hover{background:var(--green-dark);}
+
+  .section-label{
+    font-size:12.5px; text-transform:none; color:var(--ink-muted); font-weight:600;
+    margin:26px 0 10px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .entries{border-top:1px solid var(--line);}
+  .entry{
+    display:flex; align-items:center; gap:12px; padding:13px 2px;
+    border-bottom:1px solid var(--line);
+  }
+  .entry .time{font-size:12px; color:var(--ink-muted); width:44px; flex-shrink:0;}
+  .entry .name{flex:1; font-size:14.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .entry .cal{font-weight:600; font-size:14.5px;}
+  .entry .del{
+    background:none; border:none; color:var(--ink-muted); font-size:18px;
+    width:26px; height:26px; border-radius:6px; line-height:1;
+  }
+  .entry .del:hover{color:var(--tomato); background:var(--tomato-tint);}
+  .empty{padding:30px 4px; color:var(--ink-muted); font-size:14px; text-align:center;}
+
+  /* ---- History ---- */
+  .day-row{
+    display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid var(--line);
+  }
+  .day-row .d{width:96px; flex-shrink:0;}
+  .day-row .d .dd{font-weight:600; font-size:14.5px;}
+  .day-row .d .mm{font-size:12px; color:var(--ink-muted);}
+  .day-row .bar-wrap{flex:1; background:var(--line); border-radius:6px; height:9px; overflow:hidden;}
+  .day-row .bar{height:100%; background:var(--green); border-radius:6px;}
+  .day-row .bar.over{background:var(--tomato);}
+  .day-row .total{width:78px; text-align:right; font-weight:600; font-size:14px;}
+
+  /* ---- Assistant ---- */
+  .disclaimer{
+    background:var(--squash-tint); border:1px solid #E3C7A6; color:#7A4A1E;
+    border-radius:12px; padding:12px 14px; font-size:13px; line-height:1.5; margin-bottom:18px;
+  }
+  .chatlog{display:flex; flex-direction:column; gap:12px; margin-bottom:16px; min-height:120px;}
+  .msg{max-width:82%; padding:11px 14px; border-radius:16px; font-size:14.5px; line-height:1.5;}
+  .msg.user{align-self:flex-end; background:var(--green); color:#fff; border-bottom-right-radius:4px;}
+  .msg.ai{align-self:flex-start; background:var(--surface); border:1px solid var(--line); border-bottom-left-radius:4px;}
+  .msg .foot{display:block; margin-top:6px; font-size:11px; opacity:.65;}
+  .chatform{display:flex; gap:8px; position:sticky; bottom:16px;}
+  .chatform textarea{
+    flex:1; resize:none; border:1px solid var(--line); border-radius:14px; padding:12px 14px;
+    font-size:14.5px; outline:none; background:var(--surface); min-height:46px; max-height:120px;
+  }
+  .chatform textarea:focus{border-color:var(--green);}
+  .chatform button{
+    background:var(--green); color:#fff; border:none; border-radius:12px; padding:0 18px; font-weight:600;
+  }
+  .chatform button:disabled{opacity:.5; cursor:default;}
+  .setup-nudge{
+    text-align:center; padding:40px 20px; color:var(--ink-muted); font-size:14px;
+  }
+  .setup-nudge a{color:var(--green-dark); font-weight:600;}
+
+  /* ---- Settings ---- */
+  .field{margin-bottom:20px;}
+  .field label{display:block; font-size:13.5px; font-weight:600; margin-bottom:6px;}
+  .field .hint{font-size:12.5px; color:var(--ink-muted); margin-top:6px; line-height:1.5;}
+  .field input[type=number], .field input[type=text]{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-size:14.5px; outline:none; background:var(--surface);
+  }
+  .field input:focus{border-color:var(--green);}
+  .btnrow{display:flex; gap:10px; margin-top:6px; flex-wrap:wrap;}
+  .btn{
+    border-radius:10px; padding:9px 16px; font-size:13.5px; font-weight:600; border:1px solid var(--line);
+    background:var(--surface); color:var(--ink);
+  }
+  .btn.primary{background:var(--green); color:#fff; border-color:var(--green);}
+  .btn.primary:hover{background:var(--green-dark);}
+  .btn.danger{color:var(--tomato); border-color:#E7C6C1;}
+  .btn.danger:hover{background:var(--tomato-tint);}
+  .about-card{
+    background:var(--green-tint); border-radius:14px; padding:16px 18px; font-size:13.5px;
+    line-height:1.6; color:var(--green-dark); margin-top:28px;
+  }
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:10px 18px; border-radius:999px;
+    font-size:13.5px; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+
+  @media (max-width: 860px){
+    .sidebar{display:none;}
+    .tabbar{display:flex;}
+    .content{padding:24px 18px 90px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="brand"><span class="leaf">🌿</span>Günlük</div>
+    <button class="navitem active" data-view="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Bugün
+    </button>
+    <button class="navitem" data-view="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Geçmiş
+    </button>
+    <button class="navitem" data-view="assistant">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Asistan
+    </button>
+    <button class="navitem" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009.17 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9.17a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Ayarlar
+    </button>
+  </nav>
+
+  <main class="content">
+
+    <!-- TODAY -->
+    <section id="view-today" class="view active">
+      <div class="page-head">
+        <div class="eyebrow" id="todayDate">—</div>
+        <h1>Bugün ne yedin?</h1>
+      </div>
+
+      <div class="hero">
+        <div class="ring" id="ring">
+          <div class="ring-num">
+            <span class="n num" id="ringNum">0</span>
+            <span class="l" id="ringLabel">kalan kcal</span>
+          </div>
+        </div>
+        <div class="hero-info">
+          <div class="big" id="heroLine">Henüz kayıt yok.</div>
+          <div class="breakdown">
+            <div class="stat"><span class="n num" id="statEaten">0</span><span class="l">tüketilen</span></div>
+            <div class="stat"><span class="n num" id="statGoal">0</span><span class="l">hedef</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quickchips" id="quickchips"></div>
+
+      <form class="addform" id="addForm" autocomplete="off">
+        <input type="text" name="name" placeholder="Ne yedin? (örn. Mercimek çorbası)" required maxlength="60">
+        <input type="number" name="cal" placeholder="kcal" required min="0" max="9999">
+        <button type="submit">Ekle</button>
+      </form>
+
+      <div class="section-label">Bugünkü kayıtlar</div>
+      <div class="entries" id="entriesList"></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="view-history" class="view">
+      <div class="page-head">
+        <div class="eyebrow">Geçmiş kayıtlar</div>
+        <h1>Günlük geçmişin</h1>
+      </div>
+      <div id="historyList"></div>
+    </section>
+
+    <!-- ASSISTANT -->
+    <section id="view-assistant" class="view">
+      <div class="page-head">
+        <div class="eyebrow">Yapay zeka asistanı</div>
+        <h1>Soru sor</h1>
+      </div>
+      <div class="disclaimer">
+        ⚠️ Bu yanıtlar bir yapay zeka tarafından üretilir, <strong>doktor önerisi değildir</strong>. Beslenmeyle ilgili ciddi bir durumunuz varsa (kronik hastalık, hamilelik, yeme bozukluğu vb.) lütfen bir doktor veya diyetisyene danışın.
+      </div>
+      <div class="chatlog" id="chatLog"></div>
+      <div id="chatArea">
+        <form class="chatform" id="chatForm">
+          <textarea id="chatInput" placeholder="Örn: Akşam yemeğinde protein ağırlıklı ne yiyebilirim?" rows="1"></textarea>
+          <button type="submit" id="chatSend">Gönder</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="view-settings" class="view">
+      <div class="page-head">
+        <div class="eyebrow">Ayarlar</div>
+        <h1>Uygulamanı düzenle</h1>
+      </div>
+
+      <div class="field">
+        <label for="goalInput">Günlük kalori hedefi</label>
+        <input type="number" id="goalInput" min="800" max="6000" step="10">
+        <div class="hint">Bu hedef sadece senin tarayıcında saklanır. Kişisel hedefin için bir diyetisyene danışman en sağlıklısıdır.</div>
+      </div>
+
+      <div class="field">
+        <label for="endpointInput">AI Asistan bağlantı adresi (opsiyonel)</label>
+        <input type="text" id="endpointInput" placeholder="https://senin-worker-adresin.workers.dev">
+        <div class="hint">Boş bırakılırsa Asistan sekmesi kurulum talimatlarını gösterir. Ücretsiz kurulum için birlikte hazırladığımız DEPLOY.md dosyasına bak.</div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn primary" id="saveSettings">Kaydet</button>
+      </div>
+
+      <div class="section-label" style="margin-top:32px;">Veri yönetimi</div>
+      <div class="btnrow">
+        <button class="btn" id="exportBtn">Verileri dışa aktar (.json)</button>
+        <button class="btn danger" id="resetBtn">Tüm verileri sil</button>
+      </div>
+
+      <div class="about-card">
+        <strong>Bu uygulama tamamen ücretsizdir.</strong><br>
+        Kalori kayıtların hiçbir sunucuya gönderilmez — sadece bu cihazın tarayıcısında saklanır. Bu yüzden hem gizlidir hem de barındırma maliyeti yoktur. Asistan'a sorduğun sorular, yalnızca yanıt üretmek için yapılandırdığın AI servisine iletilir.
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tabitem active" data-view="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Bugün
+    </button>
+    <button class="tabitem" data-view="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Geçmiş
+    </button>
+    <button class="tabitem" data-view="assistant">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Asistan
+    </button>
+    <button class="tabitem" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009.17 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9.17a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Ayarlar
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- storage helpers ----------
+  const LS = {
+    goal: 'kaloriapp_goal',
+    entries: 'kaloriapp_entries',
+    endpoint: 'kaloriapp_endpoint',
+    chat: 'kaloriapp_chat_session'
+  };
+
+  function todayKey(){
+    const d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function loadAllEntries(){
+    try{ return JSON.parse(localStorage.getItem(LS.entries) || '{}'); }catch(e){ return {}; }
+  }
+  function saveAllEntries(obj){ localStorage.setItem(LS.entries, JSON.stringify(obj)); }
+  function getGoal(){ return parseInt(localStorage.getItem(LS.goal) || '2200', 10); }
+  function setGoal(v){ localStorage.setItem(LS.goal, String(v)); }
+  function getEndpoint(){ return localStorage.getItem(LS.endpoint) || ''; }
+  function setEndpoint(v){ localStorage.setItem(LS.endpoint, v); }
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  // ---------- navigation ----------
+  function setView(name){
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id === 'view-'+name));
+    document.querySelectorAll('.navitem').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+    document.querySelectorAll('.tabitem').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+    if(name==='today') renderToday();
+    if(name==='history') renderHistory();
+    if(name==='settings') renderSettings();
+  }
+  document.querySelectorAll('.navitem, .tabitem').forEach(b=>{
+    b.addEventListener('click', ()=> setView(b.dataset.view));
+  });
+
+  // ---------- Today view ----------
+  const dateFmt = new Intl.DateTimeFormat('tr-TR', { weekday:'long', day:'numeric', month:'long' });
+  const QUICK = [
+    {name:'Su bardağı', cal:0},
+    {name:'Elma', cal:95},
+    {name:'Haşlanmış yumurta', cal:70},
+    {name:'Tam tahıllı ekmek (1 dilim)', cal:80},
+    {name:'Bir avuç badem', cal:160},
+  ];
+
+  function renderToday(){
+    document.getElementById('todayDate').textContent = dateFmt.format(new Date());
+    const all = loadAllEntries();
+    const list = all[todayKey()] || [];
+    const goal = getGoal();
+    const eaten = list.reduce((s,e)=>s+Number(e.cal||0),0);
+    const remaining = goal - eaten;
+    const pct = Math.max(0, Math.min(100, (eaten/goal)*100));
+
+    const ring = document.getElementById('ring');
+    ring.style.setProperty('--pct', pct+'%');
+    document.getElementById('ringNum').textContent = Math.abs(remaining);
+    document.getElementById('ringLabel').textContent = remaining>=0 ? 'kalan kcal' : 'kcal aşıldı';
+    document.getElementById('ringNum').classList.toggle('over', remaining<0);
+    document.getElementById('statEaten').textContent = eaten;
+    document.getElementById('statGoal').textContent = goal;
+
+    const heroLine = document.getElementById('heroLine');
+    if(list.length===0){
+      heroLine.textContent = 'Henüz kayıt yok — ilk öğününü ekle.';
+    } else if(remaining>=0){
+      heroLine.textContent = 'Bugün için '+remaining+' kcal daha alabilirsin.';
+    } else {
+      heroLine.innerHTML = 'Günlük hedefini <span class="over">'+Math.abs(remaining)+' kcal</span> aştın.';
+    }
+
+    // quick chips
+    const qc = document.getElementById('quickchips');
+    qc.innerHTML = '';
+    QUICK.forEach(q=>{
+      const b = document.createElement('button');
+      b.type='button'; b.className='chip';
+      b.textContent = q.name + (q.cal? ' · '+q.cal+' kcal':'');
+      b.addEventListener('click', ()=> addEntry(q.name, q.cal));
+      qc.appendChild(b);
+    });
+
+    // entries list
+    const el = document.getElementById('entriesList');
+    el.innerHTML = '';
+    if(list.length===0){
+      el.innerHTML = '<div class="empty">Bugün için henüz bir şey eklemedin.</div>';
+      return;
+    }
+    list.slice().reverse().forEach(e=>{
+      const row = document.createElement('div');
+      row.className='entry';
+      row.innerHTML = `
+        <span class="time">${e.time||''}</span>
+        <span class="name">${escapeHtml(e.name)}</span>
+        <span class="cal num">${e.cal} kcal</span>
+        <button class="del" data-id="${e.id}" aria-label="Sil">×</button>`;
+      row.querySelector('.del').addEventListener('click', ()=> deleteEntry(e.id));
+      el.appendChild(row);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function addEntry(name, cal){
+    const all = loadAllEntries();
+    const key = todayKey();
+    if(!all[key]) all[key] = [];
+    const now = new Date();
+    all[key].push({
+      id: Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      name: name.trim(),
+      cal: Number(cal)||0,
+      time: String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')
+    });
+    saveAllEntries(all);
+    renderToday();
+  }
+
+  function deleteEntry(id){
+    const all = loadAllEntries();
+    const key = todayKey();
+    all[key] = (all[key]||[]).filter(e=>e.id!==id);
+    saveAllEntries(all);
+    renderToday();
+  }
+
+  document.getElementById('addForm').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    const f = ev.target;
+    const name = f.name.value.trim();
+    const cal = f.cal.value;
+    if(!name || cal==='') return;
+    addEntry(name, cal);
+    f.reset();
+    f.name.focus();
+  });
+
+  // ---------- History view ----------
+  function renderHistory(){
+    const all = loadAllEntries();
+    const goal = getGoal();
+    const keys = Object.keys(all).filter(k=>all[k] && all[k].length).sort().reverse();
+    const wrap = document.getElementById('historyList');
+    if(keys.length===0){
+      wrap.innerHTML = '<div class="empty">Henüz geçmiş kaydın yok. Birkaç gün kalori girdikten sonra burada trendini göreceksin.</div>';
+      return;
+    }
+    const fmt = new Intl.DateTimeFormat('tr-TR', {day:'2-digit', month:'short'});
+    const wd = new Intl.DateTimeFormat('tr-TR', {weekday:'short'});
+    wrap.innerHTML = keys.map(k=>{
+      const total = all[k].reduce((s,e)=>s+Number(e.cal||0),0);
+      const pct = Math.max(4, Math.min(100, (total/goal)*100));
+      const over = total > goal;
+      const d = new Date(k+'T00:00:00');
+      return `<div class="day-row">
+        <div class="d"><div class="dd">${fmt.format(d)}</div><div class="mm">${wd.format(d)}</div></div>
+        <div class="bar-wrap"><div class="bar ${over?'over':''}" style="width:${pct}%"></div></div>
+        <div class="total num">${total} kcal</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- Settings ----------
+  function renderSettings(){
+    document.getElementById('goalInput').value = getGoal();
+    document.getElementById('endpointInput').value = getEndpoint();
+  }
+  document.getElementById('saveSettings').addEventListener('click', function(){
+    const g = parseInt(document.getElementById('goalInput').value, 10);
+    if(g && g>=800 && g<=6000) setGoal(g);
+    setEndpoint(document.getElementById('endpointInput').value.trim());
+    toast('Ayarlar kaydedildi');
+    renderChatArea();
+  });
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    const data = { goal:getGoal(), entries:loadAllEntries() };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'kalori-gunlugum.json';
+    a.click();
+  });
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(confirm('Tüm kalori kayıtların silinecek. Emin misin?')){
+      localStorage.removeItem(LS.entries);
+      localStorage.removeItem(LS.chat);
+      toast('Veriler silindi');
+      renderToday();
+    }
+  });
+
+  // ---------- Assistant ----------
+  function loadChat(){
+    try{ return JSON.parse(sessionStorage.getItem(LS.chat) || '[]'); }catch(e){ return []; }
+  }
+  function saveChat(arr){ sessionStorage.setItem(LS.chat, JSON.stringify(arr)); }
+
+  function renderChatArea(){
+    const endpoint = getEndpoint();
+    const area = document.getElementById('chatArea');
+    if(!endpoint){
+      area.innerHTML = `<div class="setup-nudge">
+        AI asistanı henüz bağlanmadı.<br>
+        <a href="#" id="goSettingsLink">Ayarlar</a>'dan bağlantı adresini ekleyerek etkinleştirebilirsin — kurulumu ücretsiz, birlikte hazırladığımız DEPLOY.md dosyasında.
+      </div>`;
+      document.getElementById('goSettingsLink').addEventListener('click', function(e){
+        e.preventDefault(); setView('settings');
+      });
+    } else {
+      area.innerHTML = `<form class="chatform" id="chatForm">
+        <textarea id="chatInput" placeholder="Örn: Akşam yemeğinde protein ağırlıklı ne yiyebilirim?" rows="1"></textarea>
+        <button type="submit" id="chatSend">Gönder</button>
+      </form>`;
+      bindChatForm();
+    }
+  }
+
+  function renderChatLog(){
+    const log = loadChat();
+    const el = document.getElementById('chatLog');
+    el.innerHTML = log.map(m=>{
+      if(m.role==='user'){
+        return `<div class="msg user">${escapeHtml(m.text)}</div>`;
+      }
+      return `<div class="msg ai">${escapeHtml(m.text)}<span class="foot">Yapay zeka yanıtı · doktor önerisi değildir</span></div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function bindChatForm(){
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('chatInput');
+    input.addEventListener('input', function(){
+      input.style.height='auto'; input.style.height=Math.min(120,input.scrollHeight)+'px';
+    });
+    form.addEventListener('submit', async function(ev){
+      ev.preventDefault();
+      const text = input.value.trim();
+      if(!text) return;
+      const btn = document.getElementById('chatSend');
+      const log = loadChat();
+      log.push({role:'user', text});
+      saveChat(log); renderChatLog();
+      input.value=''; input.style.height='auto';
+      btn.disabled = true; btn.textContent='...';
+
+      const thinkingLog = loadChat();
+      thinkingLog.push({role:'ai', text:'Düşünüyor…', _pending:true});
+      saveChat(thinkingLog); renderChatLog();
+
+      try{
+        const endpoint = getEndpoint();
+        const history = loadChat().filter(m=>!m._pending).slice(-10);
+        const res = await fetch(endpoint, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ message:text, history })
+        });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        const reply = (data && data.reply) ? String(data.reply) : 'Şu an bir yanıt alamadım, tekrar dener misin?';
+        const finalLog = loadChat().filter(m=>!m._pending);
+        finalLog.push({role:'ai', text:reply});
+        saveChat(finalLog); renderChatLog();
+      }catch(err){
+        const finalLog = loadChat().filter(m=>!m._pending);
+        finalLog.push({role:'ai', text:'Bağlantı kurulamadı. Ayarlar\'daki adresi ve internet bağlantını kontrol et.'});
+        saveChat(finalLog); renderChatLog();
+      }finally{
+        btn.disabled = false; btn.textContent='Gönder';
+      }
+    });
+  }
+
+  // ---------- init ----------
+  renderToday();
+  renderChatArea();
+  renderChatLog();
+})();
+</script>
+</body>
+</html>
