@@ -227,6 +227,16 @@
   }
   .photo-remove:hover{background:rgba(176,67,58,.9);}
 
+  .meal-actions{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; flex-wrap:wrap;}
+  .meal-save-btn{display:inline-flex; align-items:center; gap:8px;}
+  .meal-save-btn:disabled{opacity:.6; cursor:default;}
+  .meal-save-status{font-size:12.5px; color:var(--ink-muted); text-align:right;}
+  .meal-save-status.err{color:var(--tomato);}
+  .meal-result{margin-top:14px; border-top:1px dashed var(--line); padding-top:12px;}
+  .meal-result-row{display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:4px 0; color:var(--ink);}
+  .meal-result-total{display:flex; justify-content:space-between; font-weight:600; border-top:1px solid var(--line); margin-top:6px; padding-top:8px; font-size:13.5px;}
+  .meal-result-note{font-size:12.5px; color:var(--ink-muted); margin-top:8px; line-height:1.5;}
+
   /* ---- Settings ---- */
   .field{margin-bottom:20px;}
   .field label{display:block; font-size:13.5px; font-weight:600; margin-bottom:6px;}
@@ -406,6 +416,11 @@
             <button type="button" class="photo-remove" data-meal="sabah">Kaldır</button>
           </div>
         </div>
+        <div class="meal-actions">
+          <button type="button" class="btn primary meal-save-btn" data-meal="sabah">Kaydet ve kcal hesapla</button>
+          <span class="meal-save-status" id="mealStatus-sabah"></span>
+        </div>
+        <div class="meal-result" id="mealResult-sabah" style="display:none;"></div>
       </div>
 
       <div class="meal-block" data-meal="ogle">
@@ -421,6 +436,11 @@
             <button type="button" class="photo-remove" data-meal="ogle">Kaldır</button>
           </div>
         </div>
+        <div class="meal-actions">
+          <button type="button" class="btn primary meal-save-btn" data-meal="ogle">Kaydet ve kcal hesapla</button>
+          <span class="meal-save-status" id="mealStatus-ogle"></span>
+        </div>
+        <div class="meal-result" id="mealResult-ogle" style="display:none;"></div>
       </div>
 
       <div class="meal-block" data-meal="aksam">
@@ -436,6 +456,11 @@
             <button type="button" class="photo-remove" data-meal="aksam">Kaldır</button>
           </div>
         </div>
+        <div class="meal-actions">
+          <button type="button" class="btn primary meal-save-btn" data-meal="aksam">Kaydet ve kcal hesapla</button>
+          <span class="meal-save-status" id="mealStatus-aksam"></span>
+        </div>
+        <div class="meal-result" id="mealResult-aksam" style="display:none;"></div>
       </div>
     </section>
 
@@ -815,6 +840,94 @@
     document.querySelector('.photo-remove[data-meal="'+m+'"]').addEventListener('click', function(){
       setMealField(m, 'photo', null);
       renderEatView();
+    });
+  });
+
+  // ---------- Ne Yiyebilirim: Kaydet ve otomatik kcal hesapla ----------
+  const MEAL_LABELS = { sabah:'Sabah', ogle:'Öğle', aksam:'Akşam' };
+
+  function setMealStatus(meal, text, isErr){
+    const el = document.getElementById('mealStatus-'+meal);
+    if(!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('err', !!isErr);
+  }
+
+  function renderMealResult(meal, items, note){
+    const wrap = document.getElementById('mealResult-'+meal);
+    if(!items || items.length===0){
+      wrap.style.display = 'none';
+      wrap.innerHTML = '';
+      return;
+    }
+    const total = items.reduce((s,it)=>s+Number(it.cal||0),0);
+    wrap.innerHTML =
+      items.map(it=>`<div class="meal-result-row"><span>${escapeHtml(it.name)}</span><span class="num">${it.cal} kcal</span></div>`).join('')
+      + `<div class="meal-result-total"><span>Toplam</span><span class="num">${total} kcal</span></div>`
+      + (note ? `<div class="meal-result-note">${escapeHtml(note)}</div>` : '');
+    wrap.style.display = '';
+  }
+
+  async function estimateAndSaveMeal(meal){
+    const btn = document.querySelector('.meal-save-btn[data-meal="'+meal+'"]');
+    const textEl = document.getElementById('mealText-'+meal);
+    const text = (textEl.value || '').trim();
+    const meals = getTodayMeals();
+    const photo = meals[meal] && meals[meal].photo;
+
+    if(!text && !photo){
+      toast('Önce bir şeyler yaz ya da fotoğraf ekle');
+      return;
+    }
+
+    const endpoint = getEndpoint();
+    if(!endpoint){
+      toast('Önce Ayarlar\'dan AI Asistan bağlantı adresini ekle');
+      setView('settings');
+      return;
+    }
+
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Hesaplanıyor…';
+    setMealStatus(meal, '', false);
+
+    try{
+      const res = await fetch(endpoint, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ estimate: { text, image: photo || null, meal } })
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      if(data && data.error){ throw new Error(data.error); }
+
+      const items = Array.isArray(data && data.items) ? data.items : [];
+      if(items.length === 0){
+        renderMealResult(meal, [], (data && data.note) || 'Bir şey tespit edemedim, metni biraz daha açık yazar mısın?');
+        setMealStatus(meal, '', false);
+        toast('Yiyecek tespit edilemedi');
+        return;
+      }
+
+      const label = MEAL_LABELS[meal] || '';
+      items.forEach(it=> addEntry(label + ' · ' + it.name, it.cal));
+      renderMealResult(meal, items, data.note || '');
+      const total = items.reduce((s,it)=>s+Number(it.cal||0),0);
+      setMealStatus(meal, items.length+' öğe eklendi · '+total+' kcal', false);
+      toast(total+' kcal günlüğüne eklendi');
+    }catch(err){
+      setMealStatus(meal, 'Hesaplanamadı, tekrar dener misin?', true);
+      toast('Bağlantı kurulamadı. Ayarlar\'daki adresi kontrol et.');
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  document.querySelectorAll('.meal-save-btn').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      estimateAndSaveMeal(btn.dataset.meal);
     });
   });
 
