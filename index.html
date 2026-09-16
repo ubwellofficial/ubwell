@@ -197,6 +197,36 @@
   }
   .setup-nudge a{color:var(--green-dark); font-weight:600;}
 
+  /* ---- Ne Yiyebilirim ---- */
+  .meal-block{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:20px; margin-bottom:16px;
+  }
+  .meal-head{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .meal-head .meal-icon{font-size:20px;}
+  .meal-head h2{font-size:16.5px; font-weight:600;}
+  .meal-text{
+    width:100%; border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+    font-size:14.5px; outline:none; background:var(--paper); resize:vertical;
+    min-height:64px; line-height:1.5; margin-bottom:14px; color:var(--ink);
+  }
+  .meal-text:focus{border-color:var(--green);}
+  .photo-drop{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    border:1.5px dashed var(--line); border-radius:12px; padding:18px;
+    color:var(--ink-muted); font-size:13.5px; font-weight:500; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .photo-drop:hover{border-color:var(--green); color:var(--green-dark); background:var(--green-tint);}
+  .photo-drop .photo-plus{font-size:18px; line-height:1;}
+  .photo-preview-wrap{position:relative; border-radius:12px; overflow:hidden;}
+  .photo-preview-wrap img{width:100%; max-height:260px; object-fit:cover; display:block; border-radius:12px;}
+  .photo-remove{
+    position:absolute; top:10px; right:10px; background:rgba(28,42,34,.72); color:#fff;
+    border:none; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600;
+  }
+  .photo-remove:hover{background:rgba(176,67,58,.9);}
+
   /* ---- Settings ---- */
   .field{margin-bottom:20px;}
   .field label{display:block; font-size:13.5px; font-weight:600; margin-bottom:6px;}
@@ -359,12 +389,53 @@
     <!-- NE YİYEBİLİRİM -->
     <section id="view-eat" class="view">
       <div class="page-head">
-        <div class="eyebrow">Öneriler</div>
+        <div class="eyebrow" id="eatDate">—</div>
         <h1>Ne yiyebilirim?</h1>
       </div>
-      <div class="setup-nudge">
-        🌿<br><br>
-        Bu bölümü birlikte tasarlayacağız — yakında burada, profiline ve günlük hedefine göre kişisel yemek önerileri göreceksin.
+
+      <div class="meal-block" data-meal="sabah">
+        <div class="meal-head"><span class="meal-icon">🌅</span><h2>Sabah</h2></div>
+        <textarea class="meal-text" id="mealText-sabah" placeholder="Sabah ne yedin ya da ne yiyebilirsin? (örn. Yulaf ezmesi, yumurta...)"></textarea>
+        <div class="meal-photo">
+          <input type="file" accept="image/*" id="mealPhoto-sabah" hidden>
+          <label for="mealPhoto-sabah" class="photo-drop" id="photoDrop-sabah">
+            <span class="photo-plus">+</span><span>Fotoğraf ekle</span>
+          </label>
+          <div class="photo-preview-wrap" id="photoPreview-sabah" style="display:none;">
+            <img id="photoImg-sabah" alt="Sabah öğünü fotoğrafı">
+            <button type="button" class="photo-remove" data-meal="sabah">Kaldır</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="meal-block" data-meal="ogle">
+        <div class="meal-head"><span class="meal-icon">☀️</span><h2>Öğle</h2></div>
+        <textarea class="meal-text" id="mealText-ogle" placeholder="Öğlen ne yedin ya da ne yiyebilirsin? (örn. Izgara tavuk, salata...)"></textarea>
+        <div class="meal-photo">
+          <input type="file" accept="image/*" id="mealPhoto-ogle" hidden>
+          <label for="mealPhoto-ogle" class="photo-drop" id="photoDrop-ogle">
+            <span class="photo-plus">+</span><span>Fotoğraf ekle</span>
+          </label>
+          <div class="photo-preview-wrap" id="photoPreview-ogle" style="display:none;">
+            <img id="photoImg-ogle" alt="Öğle öğünü fotoğrafı">
+            <button type="button" class="photo-remove" data-meal="ogle">Kaldır</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="meal-block" data-meal="aksam">
+        <div class="meal-head"><span class="meal-icon">🌙</span><h2>Akşam</h2></div>
+        <textarea class="meal-text" id="mealText-aksam" placeholder="Akşam ne yedin ya da ne yiyebilirsin? (örn. Mercimek çorbası, sebze yemeği...)"></textarea>
+        <div class="meal-photo">
+          <input type="file" accept="image/*" id="mealPhoto-aksam" hidden>
+          <label for="mealPhoto-aksam" class="photo-drop" id="photoDrop-aksam">
+            <span class="photo-plus">+</span><span>Fotoğraf ekle</span>
+          </label>
+          <div class="photo-preview-wrap" id="photoPreview-aksam" style="display:none;">
+            <img id="photoImg-aksam" alt="Akşam öğünü fotoğrafı">
+            <button type="button" class="photo-remove" data-meal="aksam">Kaldır</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -495,7 +566,8 @@
     entries: 'kaloriapp_entries',
     endpoint: 'kaloriapp_endpoint',
     chat: 'kaloriapp_chat_session',
-    profile: 'kaloriapp_profile'
+    profile: 'kaloriapp_profile',
+    mealNotes: 'kaloriapp_meal_notes'
   };
 
   function getProfile(){
@@ -530,6 +602,7 @@
     document.querySelectorAll('.navitem').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
     document.querySelectorAll('.tabitem').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
     if(name==='today') renderToday();
+    if(name==='eat') renderEatView();
     if(name==='history') renderHistory();
     if(name==='settings') renderSettings();
   }
@@ -642,6 +715,109 @@
     f.name.focus();
   });
 
+  // ---------- Ne Yiyebilirim ----------
+  const MEALS = ['sabah', 'ogle', 'aksam'];
+
+  function loadMealNotes(){
+    try{ return JSON.parse(localStorage.getItem(LS.mealNotes) || '{}'); }catch(e){ return {}; }
+  }
+  function saveMealNotes(obj){ localStorage.setItem(LS.mealNotes, JSON.stringify(obj)); }
+
+  function getTodayMeals(){
+    const all = loadMealNotes();
+    const day = all[todayKey()] || {};
+    const out = {};
+    MEALS.forEach(m=>{ out[m] = day[m] || { text:'', photo:null }; });
+    return out;
+  }
+
+  function setMealField(meal, field, value){
+    const all = loadMealNotes();
+    const key = todayKey();
+    if(!all[key]) all[key] = {};
+    if(!all[key][meal]) all[key][meal] = { text:'', photo:null };
+    all[key][meal][field] = value;
+    saveMealNotes(all);
+  }
+
+  // Fotoğrafı localStorage'a sığdırmak için küçültüp sıkıştırır
+  function compressImage(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = function(){
+          const maxDim = 900;
+          let { width, height } = img;
+          if(width > maxDim || height > maxDim){
+            if(width > height){ height = Math.round(height * (maxDim/width)); width = maxDim; }
+            else { width = Math.round(width * (maxDim/height)); height = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderEatView(){
+    document.getElementById('eatDate').textContent = dateFmt.format(new Date());
+    const meals = getTodayMeals();
+    MEALS.forEach(m=>{
+      const data = meals[m];
+      const textEl = document.getElementById('mealText-'+m);
+      if(textEl && document.activeElement !== textEl){ textEl.value = data.text || ''; }
+      const previewWrap = document.getElementById('photoPreview-'+m);
+      const dropEl = document.getElementById('photoDrop-'+m);
+      const imgEl = document.getElementById('photoImg-'+m);
+      if(data.photo){
+        imgEl.src = data.photo;
+        previewWrap.style.display = '';
+        dropEl.style.display = 'none';
+      } else {
+        previewWrap.style.display = 'none';
+        dropEl.style.display = '';
+      }
+    });
+  }
+
+  MEALS.forEach(m=>{
+    const textEl = document.getElementById('mealText-'+m);
+    textEl.addEventListener('input', function(){
+      setMealField(m, 'text', textEl.value);
+    });
+
+    const fileInput = document.getElementById('mealPhoto-'+m);
+    fileInput.addEventListener('change', async function(){
+      const file = fileInput.files && fileInput.files[0];
+      if(!file) return;
+      if(!file.type.startsWith('image/')){
+        toast('Lütfen bir görsel dosyası seç');
+        fileInput.value = '';
+        return;
+      }
+      try{
+        const dataUrl = await compressImage(file);
+        setMealField(m, 'photo', dataUrl);
+        renderEatView();
+      }catch(e){
+        toast('Fotoğraf yüklenemedi, tekrar dener misin?');
+      }
+      fileInput.value = '';
+    });
+
+    document.querySelector('.photo-remove[data-meal="'+m+'"]').addEventListener('click', function(){
+      setMealField(m, 'photo', null);
+      renderEatView();
+    });
+  });
+
   // ---------- History view ----------
   function renderHistory(){
     const all = loadAllEntries();
@@ -714,8 +890,10 @@
     if(confirm('Tüm kalori kayıtların silinecek. Emin misin?')){
       localStorage.removeItem(LS.entries);
       localStorage.removeItem(LS.chat);
+      localStorage.removeItem(LS.mealNotes);
       toast('Veriler silindi');
       renderToday();
+      renderEatView();
     }
   });
 
@@ -839,6 +1017,7 @@
   // ---------- init ----------
   initOnboarding();
   renderToday();
+  renderEatView();
   renderChatArea();
   renderChatLog();
 })();
