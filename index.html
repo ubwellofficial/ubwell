@@ -328,6 +328,10 @@
           </div>
         </div>
       </div>
+      <div class="field" style="margin-top:14px;">
+        <label for="obDisease">Kronik hastalık / özel durum (opsiyonel)</label>
+        <input type="text" id="obDisease" placeholder="örn. Tip 2 diyabet, hipertansiyon..." maxlength="120">
+      </div>
       <div class="onboard-err" id="onboardErr"></div>
       <button type="submit" class="btn primary">Devam et</button>
     </form>
@@ -394,6 +398,19 @@
 
       <div class="section-label">Bugünkü kayıtlar</div>
       <div class="entries" id="entriesList"></div>
+
+      <div class="section-label" style="margin-top:32px;">Geri kalan öğünler</div>
+      <div class="meal-block" id="suggestBlock">
+        <div class="meal-head"><span class="meal-icon">🍽️</span><h2>Bugün ne yiyebilirim?</h2></div>
+        <div style="font-size:13.5px; color:var(--ink-muted); line-height:1.5; margin-bottom:14px;">
+          Profiline (boy, kilo, yaş, cinsiyet, hareket düzeyi, varsa kronik durumun) ve bugün şu ana kadar yediklerine göre günlük kalori hedefini hesaplar, kalan bütçene göre geri kalan öğünler için öneri sunar.
+        </div>
+        <div class="meal-actions">
+          <button type="button" class="btn primary" id="suggestBtn">Bana öneri ver</button>
+          <span class="meal-save-status" id="suggestStatus"></span>
+        </div>
+        <div class="meal-result" id="suggestResult" style="display:none;"></div>
+      </div>
     </section>
 
     <!-- NE YİYEBİLİRİM -->
@@ -522,6 +539,21 @@
             <button type="button" class="seg" data-val="belirtmeyeyim">Diğer</button>
           </div>
         </div>
+      </div>
+      <div class="field">
+        <label for="stActivity">Hareket düzeyi</label>
+        <select id="stActivity">
+          <option value="hareketsiz">Hareketsiz (masa başı, egzersiz yok)</option>
+          <option value="az">Az hareketli (haftada 1-3 gün hafif egzersiz)</option>
+          <option value="orta">Orta düzeyde hareketli (haftada 3-5 gün egzersiz)</option>
+          <option value="yuksek">Çok hareketli (haftada 6-7 gün / fiziksel iş)</option>
+        </select>
+        <div class="hint">"Ne yiyebilirim" önerisindeki günlük kalori hedefini hesaplarken kullanılır.</div>
+      </div>
+      <div class="field">
+        <label for="stDisease">Kronik hastalık / özel durum (opsiyonel)</label>
+        <input type="text" id="stDisease" placeholder="örn. Tip 2 diyabet, hipertansiyon, çölyak..." maxlength="120">
+        <div class="hint">Bu bilgi yalnızca "Ne yiyebilirim" önerilerinde dikkate alınması için AI asistanına iletilir; tıbbi tavsiye yerine geçmez.</div>
       </div>
 
       <div class="section-label" style="margin-top:0;">Kalori hedefi</div>
@@ -738,6 +770,102 @@
     addEntry(name, cal);
     f.reset();
     f.name.focus();
+  });
+
+  // ---------- Günlük kalori hedefi (BMR/TDEE) ----------
+  const ACTIVITY_FACTORS = { hareketsiz:1.2, az:1.375, orta:1.55, yuksek:1.725 };
+
+  function calcBMR(p){
+    if(!p || !p.height || !p.weight || !p.age) return null;
+    const base = 10*Number(p.weight) + 6.25*Number(p.height) - 5*Number(p.age);
+    if(p.gender==='erkek') return base + 5;
+    if(p.gender==='kadin') return base - 161;
+    return base - 78; // cinsiyet belirtilmemişse ortalama
+  }
+  function calcDailyTarget(p){
+    const bmr = calcBMR(p);
+    if(!bmr) return null;
+    const factor = ACTIVITY_FACTORS[p.activity] || ACTIVITY_FACTORS.orta;
+    return Math.round(bmr * factor);
+  }
+
+  // ---------- Bugün ne yiyebilirim? (kalan öğün önerisi) ----------
+  function setSuggestStatus(text, isErr){
+    const el = document.getElementById('suggestStatus');
+    if(!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('err', !!isErr);
+  }
+
+  function renderSuggestResult(reply, target, eaten, remaining){
+    const wrap = document.getElementById('suggestResult');
+    wrap.innerHTML =
+      `<div class="meal-result-row"><span>Günlük hedef (tahmini)</span><span class="num">${target} kcal</span></div>` +
+      `<div class="meal-result-row"><span>Bugün alınan</span><span class="num">${eaten} kcal</span></div>` +
+      `<div class="meal-result-total"><span>${remaining>=0?'Kalan':'Aşım'}</span><span class="num">${Math.abs(remaining)} kcal</span></div>` +
+      `<div class="meal-result-note">${escapeHtml(reply)}</div>`;
+    wrap.style.display = '';
+  }
+
+  document.getElementById('suggestBtn').addEventListener('click', async function(){
+    const profile = getProfile();
+    if(!profile || !calcDailyTarget(profile)){
+      toast('Önce Ayarlar\'dan boy/kilo/yaş/cinsiyet bilgini ekle');
+      setView('settings');
+      return;
+    }
+    const endpoint = getEndpoint();
+    if(!endpoint){
+      toast('Önce Ayarlar\'dan AI Asistan bağlantı adresini ekle');
+      setView('settings');
+      return;
+    }
+
+    const target = calcDailyTarget(profile);
+    const all = loadAllEntries();
+    const list = all[todayKey()] || [];
+    const eaten = list.reduce((s,e)=>s+Number(e.cal||0),0);
+    const remaining = target - eaten;
+
+    const btn = this;
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Hazırlanıyor…';
+    setSuggestStatus('', false);
+    document.getElementById('suggestResult').style.display = 'none';
+
+    try{
+      const res = await fetch(endpoint, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          suggest: {
+            profile: {
+              age: profile.age, height: profile.height, weight: profile.weight,
+              gender: profile.gender, activity: profile.activity || 'orta',
+              disease: profile.disease || ''
+            },
+            dailyTarget: target,
+            eaten,
+            remaining,
+            entries: list.map(e=>({ name:e.name, cal:e.cal, time:e.time })),
+            now: new Date().toISOString()
+          }
+        })
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      if(data && data.error) throw new Error(data.error);
+      const reply = (data && data.reply) ? String(data.reply) : 'Şu an öneri üretemedim, tekrar dener misin?';
+      renderSuggestResult(reply, target, eaten, remaining);
+      setSuggestStatus('', false);
+    }catch(err){
+      setSuggestStatus('Öneri alınamadı, tekrar dener misin?', true);
+      toast('Bağlantı kurulamadı. Ayarlar\'daki adresi kontrol et.');
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
   });
 
   // ---------- Ne Yiyebilirim ----------
@@ -973,6 +1101,8 @@
     document.getElementById('stHeight').value = p ? p.height : '';
     document.getElementById('stWeight').value = p ? p.weight : '';
     document.getElementById('stAge').value = p ? p.age : '';
+    document.getElementById('stActivity').value = (p && p.activity) ? p.activity : 'orta';
+    document.getElementById('stDisease').value = (p && p.disease) ? p.disease : '';
     stSelectedGender = p ? p.gender : '';
     stGenderRow.querySelectorAll('.seg').forEach(b=>b.classList.toggle('sel', b.dataset.val===stSelectedGender));
   }
@@ -984,8 +1114,10 @@
     const height = parseInt(document.getElementById('stHeight').value, 10);
     const weight = parseInt(document.getElementById('stWeight').value, 10);
     const age = parseInt(document.getElementById('stAge').value, 10);
+    const activity = document.getElementById('stActivity').value;
+    const disease = document.getElementById('stDisease').value.trim().slice(0, 120);
     if(height && weight && age && stSelectedGender){
-      setProfile({ height, weight, age, gender: stSelectedGender });
+      setProfile({ height, weight, age, gender: stSelectedGender, activity, disease });
     }
 
     toast('Ayarlar kaydedildi');
@@ -1114,7 +1246,8 @@
       return;
     }
     errEl.textContent = '';
-    setProfile({ height, weight, age, gender: selectedGender });
+    const disease = document.getElementById('obDisease').value.trim().slice(0, 120);
+    setProfile({ height, weight, age, gender: selectedGender, activity: 'orta', disease });
     onboardOverlay.style.display = 'none';
   });
 
