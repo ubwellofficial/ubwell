@@ -231,9 +231,68 @@
     .tabbar{display:flex;}
     .content{padding:24px 18px 90px;}
   }
+
+  /* ---- Onboarding ---- */
+  .onboard-overlay{
+    position:fixed; inset:0; background:var(--paper); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .onboard-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:22px;
+    padding:34px 30px; max-width:420px; width:100%;
+  }
+  .onboard-card .leaf{font-size:26px;}
+  .onboard-card h1{font-size:23px; margin:10px 0 6px;}
+  .onboard-card .sub{color:var(--ink-muted); font-size:14px; line-height:1.5; margin-bottom:24px;}
+  .onboard-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:8px;}
+  .onboard-grid .field{margin-bottom:0;}
+  .segrow{display:flex; gap:8px;}
+  .seg{
+    flex:1; border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:10px; padding:9px 8px; font-size:13.5px; font-weight:500; text-align:center;
+  }
+  .seg.sel{background:var(--green); border-color:var(--green); color:#fff;}
+  .onboard-card .btn.primary{width:100%; padding:12px 16px; margin-top:22px; font-size:14.5px;}
+  .onboard-err{color:var(--tomato); font-size:12.5px; margin-top:10px; min-height:16px;}
 </style>
 </head>
 <body>
+
+<div class="onboard-overlay" id="onboardOverlay">
+  <div class="onboard-card">
+    <div class="leaf">🌿</div>
+    <h1>Hoş geldin</h1>
+    <div class="sub">Sana daha isabetli öneriler sunabilmemiz için birkaç bilgiye ihtiyacımız var. Bu bilgiler yalnızca bu cihazda saklanır.</div>
+    <form id="onboardForm" autocomplete="off">
+      <div class="onboard-grid">
+        <div class="field">
+          <label for="obHeight">Boy (cm)</label>
+          <input type="number" id="obHeight" min="100" max="250" required>
+        </div>
+        <div class="field">
+          <label for="obWeight">Kilo (kg)</label>
+          <input type="number" id="obWeight" min="30" max="300" required>
+        </div>
+      </div>
+      <div class="onboard-grid" style="margin-top:14px;">
+        <div class="field">
+          <label for="obAge">Yaş</label>
+          <input type="number" id="obAge" min="10" max="120" required>
+        </div>
+        <div class="field">
+          <label>Cinsiyet</label>
+          <div class="segrow" id="obGender">
+            <button type="button" class="seg" data-val="kadin">Kadın</button>
+            <button type="button" class="seg" data-val="erkek">Erkek</button>
+            <button type="button" class="seg" data-val="belirtmeyeyim">Diğer</button>
+          </div>
+        </div>
+      </div>
+      <div class="onboard-err" id="onboardErr"></div>
+      <button type="submit" class="btn primary">Devam et</button>
+    </form>
+  </div>
+</div>
 
 <div class="app">
   <nav class="sidebar">
@@ -241,6 +300,10 @@
     <button class="navitem active" data-view="today">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
       Bugün
+    </button>
+    <button class="navitem" data-view="eat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c-1.5 3-1.5 4.5 0 6M6.5 8.5c-3 3-3 8 1.5 12 2 2 6 2 8 0 4.5-4 4.5-9 1.5-12-2.5-2.5-8.5-2.5-11 0z"/></svg>
+      Ne Yiyebilirim
     </button>
     <button class="navitem" data-view="history">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
@@ -293,6 +356,18 @@
       <div class="entries" id="entriesList"></div>
     </section>
 
+    <!-- NE YİYEBİLİRİM -->
+    <section id="view-eat" class="view">
+      <div class="page-head">
+        <div class="eyebrow">Öneriler</div>
+        <h1>Ne yiyebilirim?</h1>
+      </div>
+      <div class="setup-nudge">
+        🌿<br><br>
+        Bu bölümü birlikte tasarlayacağız — yakında burada, profiline ve günlük hedefine göre kişisel yemek önerileri göreceksin.
+      </div>
+    </section>
+
     <!-- HISTORY -->
     <section id="view-history" class="view">
       <div class="page-head">
@@ -327,6 +402,33 @@
         <h1>Uygulamanı düzenle</h1>
       </div>
 
+      <div class="section-label" style="margin-top:0;">Profilin</div>
+      <div class="onboard-grid">
+        <div class="field">
+          <label for="stHeight">Boy (cm)</label>
+          <input type="number" id="stHeight" min="100" max="250">
+        </div>
+        <div class="field">
+          <label for="stWeight">Kilo (kg)</label>
+          <input type="number" id="stWeight" min="30" max="300">
+        </div>
+      </div>
+      <div class="onboard-grid" style="margin-top:14px; margin-bottom:20px;">
+        <div class="field">
+          <label for="stAge">Yaş</label>
+          <input type="number" id="stAge" min="10" max="120">
+        </div>
+        <div class="field">
+          <label>Cinsiyet</label>
+          <div class="segrow" id="stGender">
+            <button type="button" class="seg" data-val="kadin">Kadın</button>
+            <button type="button" class="seg" data-val="erkek">Erkek</button>
+            <button type="button" class="seg" data-val="belirtmeyeyim">Diğer</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:0;">Kalori hedefi</div>
       <div class="field">
         <label for="goalInput">Günlük kalori hedefi</label>
         <input type="number" id="goalInput" min="800" max="6000" step="10">
@@ -362,6 +464,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
       Bugün
     </button>
+    <button class="tabitem" data-view="eat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c-1.5 3-1.5 4.5 0 6M6.5 8.5c-3 3-3 8 1.5 12 2 2 6 2 8 0 4.5-4 4.5-9 1.5-12-2.5-2.5-8.5-2.5-11 0z"/></svg>
+      Ne Yiyebilirim
+    </button>
     <button class="tabitem" data-view="history">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
       Geçmiş
@@ -388,8 +494,14 @@
     goal: 'kaloriapp_goal',
     entries: 'kaloriapp_entries',
     endpoint: 'kaloriapp_endpoint',
-    chat: 'kaloriapp_chat_session'
+    chat: 'kaloriapp_chat_session',
+    profile: 'kaloriapp_profile'
   };
+
+  function getProfile(){
+    try{ return JSON.parse(localStorage.getItem(LS.profile) || 'null'); }catch(e){ return null; }
+  }
+  function setProfile(p){ localStorage.setItem(LS.profile, JSON.stringify(p)); }
 
   function todayKey(){
     const d = new Date();
@@ -556,14 +668,37 @@
   }
 
   // ---------- Settings ----------
+  let stSelectedGender = '';
+  const stGenderRow = document.getElementById('stGender');
+  stGenderRow.querySelectorAll('.seg').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      stSelectedGender = btn.dataset.val;
+      stGenderRow.querySelectorAll('.seg').forEach(b=>b.classList.toggle('sel', b===btn));
+    });
+  });
+
   function renderSettings(){
     document.getElementById('goalInput').value = getGoal();
     document.getElementById('endpointInput').value = getEndpoint();
+    const p = getProfile();
+    document.getElementById('stHeight').value = p ? p.height : '';
+    document.getElementById('stWeight').value = p ? p.weight : '';
+    document.getElementById('stAge').value = p ? p.age : '';
+    stSelectedGender = p ? p.gender : '';
+    stGenderRow.querySelectorAll('.seg').forEach(b=>b.classList.toggle('sel', b.dataset.val===stSelectedGender));
   }
   document.getElementById('saveSettings').addEventListener('click', function(){
     const g = parseInt(document.getElementById('goalInput').value, 10);
     if(g && g>=800 && g<=6000) setGoal(g);
     setEndpoint(document.getElementById('endpointInput').value.trim());
+
+    const height = parseInt(document.getElementById('stHeight').value, 10);
+    const weight = parseInt(document.getElementById('stWeight').value, 10);
+    const age = parseInt(document.getElementById('stAge').value, 10);
+    if(height && weight && age && stSelectedGender){
+      setProfile({ height, weight, age, gender: stSelectedGender });
+    }
+
     toast('Ayarlar kaydedildi');
     renderChatArea();
   });
@@ -667,7 +802,42 @@
     });
   }
 
+  // ---------- Onboarding ----------
+  let selectedGender = '';
+  const onboardOverlay = document.getElementById('onboardOverlay');
+  const obGenderRow = document.getElementById('obGender');
+  obGenderRow.querySelectorAll('.seg').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      selectedGender = btn.dataset.val;
+      obGenderRow.querySelectorAll('.seg').forEach(b=>b.classList.toggle('sel', b===btn));
+    });
+  });
+  document.getElementById('onboardForm').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    const height = parseInt(document.getElementById('obHeight').value, 10);
+    const weight = parseInt(document.getElementById('obWeight').value, 10);
+    const age = parseInt(document.getElementById('obAge').value, 10);
+    const errEl = document.getElementById('onboardErr');
+    if(!height || !weight || !age || !selectedGender){
+      errEl.textContent = 'Devam etmeden önce tüm alanları doldur.';
+      return;
+    }
+    errEl.textContent = '';
+    setProfile({ height, weight, age, gender: selectedGender });
+    onboardOverlay.style.display = 'none';
+  });
+
+  function initOnboarding(){
+    const p = getProfile();
+    if(p){
+      onboardOverlay.style.display = 'none';
+    } else {
+      onboardOverlay.style.display = 'flex';
+    }
+  }
+
   // ---------- init ----------
+  initOnboarding();
   renderToday();
   renderChatArea();
   renderChatLog();
